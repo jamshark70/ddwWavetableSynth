@@ -1,0 +1,86 @@
+TITLE:: MultiWtOsc
+summary:: A multi-wavetable oscillator with reduced aliasing
+categories:: UGens>Buffer
+related:: Classes/WavetablePrep
+
+DESCRIPTION::
+A pseudo-UGen that uses a wavetable file produced by link::Classes/WavetablePrep::. It attempts to control aliasing somewhat using a frequency-mapping technique. It also supports phase distortion and "unison"-style detuning.
+
+NOTE:: 
+This pseudo-UGen does not use SC wavetable oscillators, and the buffer data should not be in the same wavetable format used by link::Classes/Osc::! See link::Classes/WavetablePrep::.
+::
+
+CLASSMETHODS::
+
+METHOD:: ar
+Returns a single-channel wavetable-oscillator signal. Detuned oscillators are summed to mono.
+
+ARGUMENT:: freq
+Frequency in Hz.
+
+ARGUMENT:: wtPos
+Wavetable position. It is up to you to know how many wavetables were provided in the source.
+
+ARGUMENT:: squeeze
+A phase-distortion factor. 0 is no distortion. Positive values squeeze at the point of wtOffset; if wtOffset is 0.25, then 1/4 from the left of the wavetable will squeeze. Negative values stretch at the same point.
+
+ARGUMENT:: wtOffset
+An offset, 0-1, added to the distorted phase. This affects the position in the wavetable that is squeezed or stretched. Rapid modulation is likely to affect pitch.
+
+ARGUMENT:: bufnum
+The buffer, containing a file produced by link::Classes/WavetablePrep::.
+
+ARGUMENT:: wtSize
+The number of samples for each waveform.
+
+ARGUMENT:: numTables
+The number of frequency maps.
+
+ARGUMENT:: ratio
+The ratio between frequency maps (2 = one octave).
+
+ARGUMENT:: numOscs
+The number of oscillators to produce. This must be a fixed integer (cannot be modulated).
+
+ARGUMENT:: detune
+The maximum frequency ratio for detuning. 1 = no detuning.
+
+
+
+METHOD:: arOscs
+Similar to code::ar::, but it returns the detuned oscillators as an array, so that you can mix them according to any strategy you like (e.g. link::Classes/Splay::).
+
+NOTE:: If numOscs = 1, then the result will be a UGen, not an array. ::
+
+
+EXAMPLES::
+
+code::
+// change the path to a file you actually have!
+w = WavetablePrep("~/.Rack/plugins-v1/Blamsoft-XFXWave/res/XTable Growler.wav".standardizePath);
+
+w.read(action: { "done".postln });
+
+w.tables.size  // 256 wavetable positions
+
+w.write(thisProcess.nowExecutingPath.dirname +/+ "growler-wt.wav");
+
+s.boot;
+
+b = Buffer.read(s, thisProcess.nowExecutingPath.dirname +/+ "growler-wt.wav");
+
+(
+a = {
+	var trig = Impulse.ar(10);
+	(MultiWtOsc.ar(
+		TExpRand.ar(50, 500, trig),
+		LFDNoise3.kr(3).range(0, 254.999),
+		0, 0,
+		bufnum: b, numTables: 8, wtSize: 2048, ratio: 2,
+		numOscs: 5, detune: 1.008
+	) * 0.1).dup
+}.play;
+)
+
+a.free;
+::

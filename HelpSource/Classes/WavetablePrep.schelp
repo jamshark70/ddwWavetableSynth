@@ -1,0 +1,133 @@
+TITLE:: WavetablePrep
+summary:: Preprocess Serum-style wavetable files for reduced-aliasing wavetable synthesis in SC
+categories:: Collections>Ordered
+related:: Classes/MultiWtOsc
+
+DESCRIPTION::
+This class prepares wavetable data from other software for use in SuperCollider.
+
+It is a companion to the pseudo-UGen link::Classes/MultiWtOsc:: (multi-wavetable oscillator).
+
+Many notable wavetable synthesizers (Serum, Vital, Massive etc.) store multi-wavetables in sequential format. If, for instance, one wavetable consists of 2048 samples (this seems fairly common), then "wavetable position" 0 is found in samples 0 - 2047, position 1 in samples 2048 - 4095, position 2 in samples 4096 - 6143 and so on. I have directly observed this format in Serum, Vital, and a VCV Rack 1.0 wavetable module (XFXWave from Blamsoft, sadly discontinued); I assume then that this is a standard practice.
+
+These synthesizers use oversampling to reduce the aliasing that is inherent in high-rate wavetable playback. SuperCollider does not have an oversampling wavetable oscillator (and I haven't written one). Instead, MultiWtOsc uses multiple versions of each wavetable position, where each version reduces the number of harmonics that are included. Versions at higher indices are safe to play at higher frequencies (though there is always an upper limit). This technique is similar to mipmapping (except reducing frequency-domain content, instead of reducing resolution).
+
+WavetablePrep reads a Serum/Vital-style wavetable file, and writes a "mipmapped" wavetable file for MultiWtOsc.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create an instance of WavetablePrep, and set properties for future processing.
+
+ARGUMENT:: path
+Full path to a Serum/Vital-style wavetable file. This should be an audio file in the format noted above: 1/ each waveform should be the same length; 2/ the length should be a power of two; 3/ successive "wavetable position" waveforms should be simply concatenated.
+
+ARGUMENT:: wtSize
+The number of samples for each waveform. The defaults, 2048, seems to be a de facto standard.
+
+ARGUMENT:: numMaps
+The number of frequency-mapped versions to create.
+
+ARGUMENT:: ratio
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: read
+Read from the previously-set file path.
+
+Note that this operation may take several seconds. It is not suitable to run on stage. If you must run it on stage, you may give a positive value for code::pause::. The entire operation will take longer to complete, but will be less likely to interrupt ongoing scheduled processes.
+
+ARGUMENT:: action
+A function to evaluate upon completion. The arguments to this function will be: code::exception:: (an Exception or Error, or code::nil:: upon success), and the WavetablePrep instance itself.
+
+ARGUMENT:: pause
+A number of seconds to wait between processing each wavetable-position.
+
+returns:: The WavetablePrep instance is returned. Upon completion, the wavetable versions will be available in link::#-tables::.
+
+
+METHOD:: write
+Write the processed contents into a new file, ready for link::Classes/MultiWtOsc::. It will be a floating-point WAV file (because the bandlimiting function may cause the waveform to exceed +/- 1).
+
+ARGUMENT:: outPath
+Full path to the file to be written.
+
+
+subsection:: Properties
+
+METHOD:: wtSize
+Get or set the wavetable size.
+
+
+METHOD:: numMaps
+Get or set the number of frequency maps to create.
+
+
+METHOD:: path
+Get or set the path to the wavetable source file.
+
+
+METHOD:: ratio
+Get or set the frequency ratio between mapped versions.
+
+
+METHOD:: fudgeFactor
+Get or set an offset for the frequency boundaries. In general, 0 <= fudgeFactor < 2. A higher value will lose less high-frequency content, but allow more aliasing.
+
+
+METHOD:: tables
+After a successful link::#-read::, this is a two-dimensional array. code::tables[0]:: contains the frequency-mapped versions for wavetable position 0, and so on.
+
+
+
+subsection:: Processing
+
+METHOD:: decimate
+Produces the mapped versions for an input link::Classes/Signal:: object containing one waveform.
+
+ARGUMENT:: timeDomainTable
+A Signal.
+
+ARGUMENT:: cos
+Optional: The link::Classes/Signal#-fftCosTable:: for FFT processing.
+
+returns:: An Array of code::numMaps:: Signals.
+
+
+
+
+EXAMPLES::
+
+code::
+// change the path to a file you actually have!
+w = WavetablePrep("~/.Rack/plugins-v1/Blamsoft-XFXWave/res/XTable Growler.wav".standardizePath);
+
+w.read(action: { "done".postln });
+
+w.tables.size  // 256 wavetable positions
+
+w.write(thisProcess.nowExecutingPath.dirname +/+ "growler-wt.wav");
+
+s.boot;
+
+b = Buffer.read(s, thisProcess.nowExecutingPath.dirname +/+ "growler-wt.wav");
+
+(
+a = {
+	var trig = Impulse.ar(10);
+	(MultiWtOsc.ar(
+		TExpRand.ar(50, 500, trig),
+		LFDNoise3.kr(3).range(0, 254.999),
+		0, 0,
+		bufnum: b, numTables: 8, wtSize: 2048, ratio: 2,
+		numOscs: 5, detune: 1.008
+	) * 0.1).dup
+}.play;
+)
+
+a.free;
+::
