@@ -24,7 +24,7 @@ ARGUMENT:: wtPos
 Wavetable position. It is up to you to know how many wavetables were provided in the source.
 
 ARGUMENT:: squeeze
-A phase-distortion factor. 0 is no distortion. Positive values squeeze at the point of wtOffset; if wtOffset is 0.25, then 1/4 from the left of the wavetable will squeeze. Negative values stretch at the same point.
+A phase-distortion factor. 0 is no distortion.
 
 ARGUMENT:: wtOffset
 An offset, 0-1, added to the distorted phase. This affects the position in the wavetable that is squeezed or stretched. Rapid modulation is likely to affect pitch.
@@ -47,6 +47,8 @@ The number of oscillators to produce. This must be a fixed integer (cannot be mo
 ARGUMENT:: detune
 The maximum frequency ratio for detuning. 1 = no detuning.
 
+ARGUMENT:: interpolation
+Interpolation method, passed internally to BufRd. 1 means no interpolation, 2 is linear, 4 is cubic.
 
 
 METHOD:: arOscs
