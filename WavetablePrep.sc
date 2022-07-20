@@ -108,17 +108,18 @@ WavetablePrep {
 MultiWtOsc {
 	*ar { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
 		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
-		numOscs = 1, detune = 1|
+		numOscs = 1, detune = 1, interpolation = 2|
 
 		var out = this.arOscs(freq, wtPos, squeeze, wtOffset,
-			bufnum, wtSize, numTables, ratio, numOscs, detune
+			bufnum, wtSize, numTables, ratio,
+			numOscs, detune, interpolation
 		);
-		out.asArray.sum
+		^out.asArray.sum
 	}
 
 	*arOscs { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
 		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
-		numOscs = 1, detune = 1|
+		numOscs = 1, detune = 1, interpolation = 2|
 
 		var detunes = Array.fill(numOscs, { detune ** Rand(-1, 1) });
 
@@ -156,14 +157,14 @@ MultiWtOsc {
 
 		var evenPhase = phase + evenMap;  // eliminate a duplicate '+'
 		var evenSig = LinXFade2.ar(
-			BufRd.ar(1, bufnum, evenPhase + evenWt),
-			BufRd.ar(1, bufnum, evenPhase + oddWt),
+			BufRd.ar(1, bufnum, evenPhase + evenWt, interpolation: interpolation),
+			BufRd.ar(1, bufnum, evenPhase + oddWt, interpolation: interpolation),
 			wtXfade
 		);
 		var oddPhase = phase + oddMap;
 		var oddSig = LinXFade2.ar(
-			BufRd.ar(1, bufnum, oddPhase + evenWt),
-			BufRd.ar(1, bufnum, oddPhase + oddWt),
+			BufRd.ar(1, bufnum, oddPhase + evenWt, interpolation: interpolation),
+			BufRd.ar(1, bufnum, oddPhase + oddWt, interpolation: interpolation),
 			wtXfade
 		);
 
