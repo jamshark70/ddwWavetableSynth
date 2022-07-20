@@ -14,6 +14,8 @@ These synthesizers use oversampling to reduce the aliasing that is inherent in h
 
 WavetablePrep reads a Serum/Vital-style wavetable file, and writes a "mipmapped" wavetable file for MultiWtOsc.
 
+NOTE:: At playback time, indexing resolution may be lost if the resulting size exceeds 24 bits of precision = 16777216 sample frames. A 2048-sample wavetable, with 256 positions and 8 frequency maps, comes to 4194304 samples, well within range. Most original wavetable files are likely to be fine. Exceptionally large ones may need to be reduced. ::
+
 
 CLASSMETHODS::
 
@@ -32,6 +34,19 @@ The number of frequency-mapped versions to create.
 ARGUMENT:: ratio
 The frequency ratio between subsequent versions. The default maps each octave to a different version.
 
+ARGUMENT:: filter
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+
+
+METHOD:: filters
+A dictionary of functions for frequency-domain filtering the wavetables. Currently two are provided:
+
+list::
+## code::\brickwall:: brutally chops off all content above the given topBin.
+## code::\tenPctSlope:: will slope the bin amplitudes down to zero, spanning ten percent of topBin (topBin - 5% up to topBin + 5%).
+::
+
+You may add to this collection. Follow the models in the class source.
 
 
 INSTANCEMETHODS::
@@ -81,6 +96,10 @@ Get or set an offset for the frequency boundaries. In general, 0 <= fudgeFactor 
 
 METHOD:: tables
 After a successful link::#-read::, this is a two-dimensional array. code::tables[0]:: contains the frequency-mapped versions for wavetable position 0, and so on.
+
+
+METHOD:: filter
+A symbol, to look up a filtering function from link::#*tables::. If the symbol does not locate a function, code::\brickwall:: will be used.
 
 
 

@@ -10,6 +10,8 @@ NOTE::
 This pseudo-UGen does not use SC wavetable oscillators, and the buffer data should not be in the same wavetable format used by link::Classes/Osc::! See link::Classes/WavetablePrep::.
 ::
 
+NOTE:: At playback time, indexing resolution may be lost if the resulting size exceeds 24 bits of precision = 16777216 sample frames. A 2048-sample wavetable, with 256 positions and 8 frequency maps, comes to 4194304 samples, well within range. Most original wavetable files are likely to be fine. Exceptionally large ones may need to be reduced. ::
+
 CLASSMETHODS::
 
 METHOD:: ar
