@@ -1,18 +1,55 @@
 // 2022 hjh H. James Harkins
 
 WavetablePrep {
+	classvar <>filters;
+
 	var <>path;
 	var <>wtSize = 2048;
 	var <>numMaps = 8;
 	var <>ratio = 2;
 	var <>fudgeFactor = 0.5;
+	var <>filter = \brickwall;
 	// 2d array of Signals
 	// outer dimension is wt-position entries
 	// inner dimension is mipmaps
 	var <>tables;
 
-	*new { |path, wtSize = 2048, numMaps = 8, ratio = 2|
-		^super.newCopyArgs(path, wtSize, numMaps, ratio)
+	*initClass {
+		filters = (
+			brickwall: { |fft, topBin|
+				var r = fft.real.copy, i = fft.imag.copy;
+				topBin = topBin.asInteger + 1;
+				r[topBin .. r.size - topBin] = 0.0;
+				i[topBin .. r.size - topBin] = 0.0;
+				r[0] = 0.0; i[0] = 0.0;  // also kill DC
+				Complex(r, i)
+			},
+			tenPctSlope: { |fft, topBin|
+				var r = fft.real.copy, i = fft.imag.copy;
+				var half = (topBin * 0.05).asInteger;
+				var step;
+				// number of items = topBin * 0.1
+				// total line should slide over -1 / (topBin * 0.1)
+				// = -10 / topBin
+				topBin = topBin.asInteger;
+				step = -10.0 / topBin;
+				((topBin * 0.9).asInteger .. topBin).do { |bin, j|
+					var mul = 1.0 + (step * j);
+					j = j + half;
+					r[j] = r[j] * mul;
+					i[j] = i[j] * mul;
+				};
+				topBin = topBin + half + 1;
+				r[topBin .. r.size - topBin] = 0.0;
+				i[topBin .. r.size - topBin] = 0.0;
+				r[0] = 0.0; i[0] = 0.0;  // also kill DC
+				Complex(r, i)
+			}
+		)
+	}
+
+	*new { |path, wtSize = 2048, numMaps = 8, ratio = 2, filter|
+		^super.newCopyArgs(path, wtSize, numMaps, ratio, 0.5, filter)
 	}
 
 	read { |action, pause = 0.01|
@@ -43,9 +80,10 @@ WavetablePrep {
 
 	decimate { |timeDomainTable, cos(Signal.fftCosTable(wtSize))|
 		var fft = timeDomainTable.fft(Signal.newClear(wtSize), cos);
+		var func = filters[filter] ?? { filters[\brickwall] };
 		^Array.fill(numMaps, { |i|
 			var topBin = timeDomainTable.size * 0.5 / (ratio ** (i + fudgeFactor));
-			var new = fft.brickwall(topBin);
+			var new = func.(fft, topBin);
 			new.real.ifft(new.imag, cos).real
 		});
 	}
@@ -72,9 +110,10 @@ MultiWtOsc {
 		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
 		numOscs = 1, detune = 1|
 
-		^this.arOscs(freq, wtPos, squeeze, wtOffset,
+		var out = this.arOscs(freq, wtPos, squeeze, wtOffset,
 			bufnum, wtSize, numTables, ratio, numOscs, detune
-		).sum
+		);
+		out.asArray.sum
 	}
 
 	*arOscs { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
@@ -129,16 +168,5 @@ MultiWtOsc {
 		);
 
 		^LinXFade2.ar(evenSig, oddSig, mapXfade * 2 - 1).unbubble
-	}
-}
-
-+ Complex {
-	brickwall { |topBin|
-		var r = real.copy, i = imag.copy;
-		topBin = topBin.asInteger + 1;
-		r[topBin .. r.size - topBin] = 0.0;
-		i[topBin .. r.size - topBin] = 0.0;
-		r[0] = 0.0; i[0] = 0.0;  // also kill DC
-		^Complex(r, i)
 	}
 }
