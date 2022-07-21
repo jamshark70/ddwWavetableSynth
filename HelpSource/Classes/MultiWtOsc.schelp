@@ -50,6 +50,9 @@ The maximum frequency ratio for detuning. 1 = no detuning.
 ARGUMENT:: interpolation
 Interpolation method, passed internally to BufRd. 1 means no interpolation, 2 is linear, 4 is cubic.
 
+ARGUMENT:: hardSync
+Optional. An audio-rate signal serving as a hard sync source. The default, 0, disables sync. See examples below.
+
 
 METHOD:: arOscs
 Similar to code::ar::, but it returns the detuned oscillators as an array, so that you can mix them according to any strategy you like (e.g. link::Classes/Splay::).
@@ -87,4 +90,79 @@ a = {
 )
 
 a.free;
+
+
+
+// hacking a triangle --> sawtooth wavetable
+(
+f = SoundFile.openWrite("~/tri-saw.wav".standardizePath, "wav", "float", 1, 44100);
+
+if(f.notNil) {
+	var wt = Signal.newClear(2048);
+	protect {
+		50.do { |i|
+			var frac = 0.5 - (i / 100);  // (0.5, 0.49 .. 0.01)
+			var peakI = (2048 * frac).round.asInteger;
+			var remain = 2047 - peakI;
+			(0 .. peakI).do { |j|
+				wt[j] = (j / peakI) * 2 - 1;
+			};
+			(peakI .. 2047).do { |j|
+				wt[j] = ((j - peakI) / remain) * -2 + 1;
+			};
+			f.writeData(wt);
+		};
+	} { f.close };
+};
+)
+
+// convert to MultiWtOsc format
+w = WavetablePrep("~/tri-saw.wav".standardizePath, wtSize: 2048, numMaps: 8, ratio: 2, filter: \tenPctSlope).read;
+
+w.write("~/tri-saw-wt.wav".standardizePath);
+
+b = Buffer.read(s, "~/tri-saw-wt.wav".standardizePath);
+
+// simple oscillator
+(
+a = {
+	var sig = MultiWtOsc.ar(
+		MouseX.kr(50, 800, 1),
+		MouseY.kr(0, 48.999, 0),
+		bufnum: b
+	);
+	(sig * 0.1).dup
+}.play;
+)
+
+// hard sync
+(
+a = {
+	// sync freq should be below oscillator freq
+	var sync = LFTri.ar(50);
+	var sig = MultiWtOsc.ar(
+		MouseX.kr(50, 800, 1),
+		MouseY.kr(0, 48.999, 0),
+		bufnum: b,
+		hardSync: sync
+	);
+	(sig * 0.1).dup
+}.play;
+)
+
+// windowed sync
+(
+a = {
+	var sync = LFTri.ar(50);
+	var sig = MultiWtOsc.ar(
+		MouseX.kr(50, 800, 1),
+		MouseY.kr(0, 48.999, 0),
+		bufnum: b,
+		// try also with more oscillators
+		// numOscs: 5, detune: 1.011,
+		hardSync: sync
+	);
+	(sig * (sync * 5).clip(-1, 1) * 0.1).dup
+}.play;
+)
 ::

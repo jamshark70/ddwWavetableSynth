@@ -108,18 +108,18 @@ WavetablePrep {
 MultiWtOsc {
 	*ar { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
 		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
-		numOscs = 1, detune = 1, interpolation = 2|
+		numOscs = 1, detune = 1, interpolation = 2, hardSync = 0|
 
 		var out = this.arOscs(freq, wtPos, squeeze, wtOffset,
 			bufnum, wtSize, numTables, ratio,
-			numOscs, detune, interpolation
+			numOscs, detune, interpolation, hardSync
 		);
 		^out.asArray.sum
 	}
 
 	*arOscs { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
 		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
-		numOscs = 1, detune = 1, interpolation = 2|
+		numOscs = 1, detune = 1, interpolation = 2, hardSync = 0|
 
 		var detunes = Array.fill(numOscs, { detune ** Rand(-1, 1) });
 
@@ -150,7 +150,7 @@ MultiWtOsc {
 		var oddWt = ((lagPos + 1).round(2) - 1) * rowSize;
 		var wtXfade = lagPos.fold(0, 1) * 2 - 1;
 
-		var normphase = Phasor.ar(0, SampleDur.ir * (freq * detunes), 0, 1);
+		var normphase = Phasor.ar(hardSync, SampleDur.ir * (freq * detunes), 0, 1);
 		// credit: Paul Miller of TXModular
 		var phaseDist = ((normphase * 2 - 1) ** (2 ** squeeze)) * 0.5 + 0.5;
 		var phase = (phaseDist + wtOffset) % 1.0 * wtSize;
