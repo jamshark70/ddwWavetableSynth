@@ -12,6 +12,10 @@ This pseudo-UGen does not use SC wavetable oscillators, and the buffer data shou
 
 NOTE:: At playback time, indexing resolution may be lost if the resulting size exceeds 24 bits of precision = 16777216 sample frames. A 2048-sample wavetable, with 256 positions and 8 frequency maps, comes to 4194304 samples, well within range. Most original wavetable files are likely to be fine. Exceptionally large ones may need to be reduced. ::
 
+SUBSECTION:: Relationship between offset and squeeze/stretch point
+
+
+
 CLASSMETHODS::
 
 METHOD:: ar
@@ -24,10 +28,10 @@ ARGUMENT:: wtPos
 Wavetable position. It is up to you to know how many wavetables were provided in the source.
 
 ARGUMENT:: squeeze
-A phase-distortion factor. 0 is no distortion.
+A phase-distortion factor. 0 is no distortion. code::squeeze > 0:: compacts the waveform around the wtOffset point; code::squeeze < 0:: stretches around the same point.
 
 ARGUMENT:: wtOffset
-An offset, 0-1, added to the distorted phase. This affects the position in the wavetable that is squeezed or stretched. Rapid modulation is likely to affect pitch.
+An offset, 0-1, added to the distorted phase. This determines the position in the wavetable that is squeezed or stretched. Rapid modulation is likely to affect pitch.
 
 ARGUMENT:: bufnum
 The buffer, containing a file produced by link::Classes/WavetablePrep::.
