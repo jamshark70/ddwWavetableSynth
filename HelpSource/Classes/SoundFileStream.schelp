@@ -1,0 +1,104 @@
+TITLE:: SoundFileStream
+summary:: In-memory version of typical SoundFile operations
+categories:: Files
+related:: Classes/CollStream, Classes/WavetablePrep
+
+DESCRIPTION::
+The (undocumented) class CollStream imitates the File interface, while keeping data in memory. (This makes it possible to write code that can print to the post window emphasis::or:: write text to a disk file emphasis::or:: collect text in a String, using the file streaming interface.)
+
+SoundFileStream is the counterpart for link::Classes/SoundFile::.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new instance.
+
+ARGUMENT:: collection
+Data to be read. If omitted, the object will be empty (ready for link::#-writeData::).
+
+This should be a link::Classes/FloatArray:: or a subclass (most likely link::Classes/Signal::).
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: readData
+Get audio data from the stream.
+
+ARGUMENT:: floatArray
+A link::Classes/FloatArray:: or link::Classes/Signal::, initialized by link::Classes/ArrayedCollection#*newClear:: to the number of samples you want to read. See link::Classes/SoundFile#-readData::.
+
+
+METHOD:: writeData
+Write data from a link::Classes/FloatArray:: or link::Classes/Signal:: into the stream.
+
+NOTE:: In this version, written data are always appended at the end. code::seek:: does not apply to writing. ::
+
+ARGUMENT:: floatArray
+The data to add to the end.
+
+
+METHOD:: seek
+Move the read position to a given number of sample frames, relative to code::origin::.
+
+ARGUMENT:: frames
+How many (integer) frames to move relative to the origin.
+
+ARGUMENT:: origin
+0 = measure from the start of the data; 1 = measure from the current position; 2 = measure from the end of the data.
+
+
+METHOD:: close
+There is no real necessity to close an in-memory collection; however, this method resets the position to the beginning. This is convenient when, for instance, filling a SoundFileStream by link::#-writeData::, and then resetting to read from the same object.
+
+
+METHOD:: collection
+The complete data collection.
+
+
+subsection:: Properties
+
+Properties are "fake," in a sense -- there is no sound file header for an in-memory collection. But, for programming interface compatibility, the following methods are provided.
+
+METHOD:: numChannels
+How many channels are represented (interleaved).
+
+METHOD:: headerFormat
+Ignored.
+
+METHOD:: sampleRate
+Largely ignored, although it does affect link::#-duration::.
+
+
+METHOD:: numFrames
+Calculated from the size of the collection divided by numChannels.
+
+
+METHOD:: duration
+Calculated from numFrames / sampleRate.
+
+
+METHOD:: sampleFormat
+Ignored.
+
+
+EXAMPLES::
+
+See link::Classes/WavetablePrep:: for a more interesting usage example.
+
+code::
+f = SoundFileStream.new;
+
+d = Signal.sineFill(512, [1, 0.5]);
+
+f.writeData(d);
+
+f.close;  // reset to start -- no physical "close"
+
+// this bit, you can do 4 times
+// after the 4th, 'd' is empty (out of data)
+d = Signal.newClear(128);
+f.readData(d);
+d.plot;
+::

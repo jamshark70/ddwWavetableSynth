@@ -1,0 +1,88 @@
+TITLE:: WavetablePrepGui
+summary:: A graphical interface to see WavetablePrep contents
+categories:: GUI>Interfaces
+related:: Classes/WavetablePrep
+
+DESCRIPTION::
+A graphical interface to visualize wavetable matrices that have been processed by link::Classes/WavetablePrep::.
+
+It assumes that you already have a WavetablePrep instance, fully populated with wavetables.
+
+The easiest way to create one is by calling code::gui:: on the WavetablePrep object.
+
+NOTE:: Because of the way the parent class, link::Classes/SCViewHolder::, works, the argument to the action function does not give you access to the GUI's parameter values. (SCViewHolder passes a View object to the action function, which doesn't know how to reach the object that owns it.) So you will have to keep a reference to the WavetablePrepGui in a variable, and use your variable in the action function instead. ::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create the GUI instance.
+
+ARGUMENT:: model
+The WavetablePrep object to display.
+
+ARGUMENT:: parent
+Optional. Supply a link::Classes/Window:: or link::Classes/View:: if you wish to put the interface into an existing GUI context. This can be code::nil:: if you either a/ supply code::bounds:: (in which case the view will create its own window) or b/ you will put the WavetablePrepGui into a link::Classes/Layout:: later.
+
+ARGUMENT:: bounds
+Optional, if you are using Qt layouts. If not, a link::Classes/Rect:: should be provided.
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: freq
+Get or set the frequency mapping to display. (Setting should be done from AppClock.)
+
+
+METHOD:: wtPos
+Get or set the wavetable position to display. (Setting should be done from AppClock.)
+
+
+METHOD:: sr
+Get or set the sample rate being used to calculate frequency mapping.
+
+
+subsection:: GUI widgets
+
+This class does not provide methods to change the appearance of the GUI widgets. However, you may access them directly and set their drawing properties.
+
+METHOD:: graph
+The link::Classes/MultiSliderView:: displaying the waveform.
+
+METHOD:: posSlider
+The link::Classes/LayoutValueSlider:: controlling wavetable position.
+
+METHOD:: freqSlider
+The link::Classes/LayoutValueSlider:: controlling frequency.
+
+
+PRIVATE:: model, refresh, init
+
+
+EXAMPLES::
+
+code::
+// read arbitrary audio into a WavetablePrep
+// frequency mapping won't make sense! but it's kinda cool
+
+w = WavetablePrep.readFromProcessedFile(Platform.resourceDir +/+ "sounds/a11wlk01.wav", startFrame: 14327, numFrames: 131072);
+
+g = w.gui(nil, Rect(800, 200, 500, 400)).front;
+
+b.free;
+b = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav", startFrame: 14327, numFrames: 131072);
+
+(
+a = { |freq = 440, wtPos = 0|
+	(MultiWtOsc.ar(freq, wtPos, bufnum: b) * 0.1).dup
+}.play;
+
+g.action = { // note: can't use 'view' argument
+	a.set(\freq, g.freq, \wtPos, g.wtPos)
+};
+)
+
+a.free; g.close;
+
+::

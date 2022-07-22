@@ -1,7 +1,7 @@
 TITLE:: WavetablePrep
 summary:: Preprocess Serum-style wavetable files for reduced-aliasing wavetable synthesis in SC
 categories:: Collections>Ordered
-related:: Classes/MultiWtOsc
+related:: Classes/MultiWtOsc, Classes/WavetablePrepGui, Classes/SoundFileStream
 
 DESCRIPTION::
 This class prepares wavetable data from other software for use in SuperCollider.
@@ -26,7 +26,7 @@ ARGUMENT:: path
 Full path to a Serum-style wavetable file. This should be an audio file in the format noted above: 1/ each waveform should be the same length; 2/ the length should be a power of two; 3/ successive "wavetable position" waveforms should be simply concatenated.
 
 ARGUMENT:: wtSize
-The number of samples for each waveform. The defaults, 2048, seems to be a de facto standard.
+The number of samples for each waveform. The default, 2048, seems to be a de facto standard.
 
 ARGUMENT:: numMaps
 The number of frequency-mapped versions to create.
@@ -36,6 +36,110 @@ The frequency ratio between subsequent versions. The default maps each octave to
 
 ARGUMENT:: filter
 A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+
+
+METHOD:: read
+
+Create a new instance and read immediately from a disk file.
+
+ARGUMENT:: path
+Full path to a Serum-style wavetable file. This should be an audio file in the format noted above: 1/ each waveform should be the same length; 2/ the length should be a power of two; 3/ successive "wavetable position" waveforms should be simply concatenated.
+
+ARGUMENT:: wtSize
+The number of samples for each waveform. The default, 2048, seems to be a de facto standard.
+
+ARGUMENT:: numMaps
+The number of frequency-mapped versions to create.
+
+ARGUMENT:: ratio
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+ARGUMENT:: filter
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+
+ARGUMENT:: action
+A function to evaluate upon completion. The arguments to this function will be: code::exception:: (an Exception or Error, or code::nil:: upon success), and the WavetablePrep instance itself.
+
+ARGUMENT:: pause
+A number of seconds to wait between processing each wavetable-position.
+
+
+METHOD:: readFromProcessedFile
+
+Creates a new WavetablePrep instance and populates it from an expanded wavetable file which WavetablePrep had previously written. This allows you to open a GUI, for instance, without reprocessing from the original wavetable. (It should be faster to read an already-processed wavetable matrix than to re-process it.)
+
+ARGUMENT:: path
+A full path to a WavetablePrep output file.
+
+ARGUMENT:: wtSize
+The number of samples for each waveform. The default, 2048, seems to be a de facto standard.
+
+ARGUMENT:: numMaps
+The number of frequency-mapped versions to create.
+
+ARGUMENT:: ratio
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+ARGUMENT:: startFrame
+The starting position in the file. In normal usage, you would read from the beginning. However, this option allows you to read arbitrary audio as if it were a wavetable matrix, from any position in an audio file.
+
+ARGUMENT:: numFrames
+The number of frames to read. Again, normal usage is to read an entire wavetable matrix file. When reading arbitrary audio, this argument can force a smaller result matrix.
+
+
+METHOD:: readImage
+
+Convert an image file on disk into a wavetable matrix.
+
+ARGUMENT:: path
+Full path to an image file on disk. The format should be one of those supported by link::Classes/Image::.
+
+ARGUMENT:: wtSize
+The number of samples for each waveform.
+
+ARGUMENT:: numPos
+The number of "wavetable positions" to create.
+
+ARGUMENT:: numMaps
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+ARGUMENT:: ratio
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+ARGUMENT:: valueFunc
+A function which accepts a link::Classes/Color:: object representing one pixel. This function should return a floating point value between 0.0 and 1.0. You can convert the color into the value any way you like. The default uses a standard luminance formula.
+
+ARGUMENT:: filter
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+
+
+METHOD:: fromImage
+
+Convert an link::Classes/Image:: object in memory into a wavetable matrix.
+
+NOTE:: This method will resize the input Image object, in place. If you need the original Image to be unaffected, make sure to copy it first. ::
+
+ARGUMENT:: image
+An Image object.
+
+ARGUMENT:: wtSize
+The number of samples for each waveform.
+
+ARGUMENT:: numPos
+The number of "wavetable positions" to create.
+
+ARGUMENT:: numMaps
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+ARGUMENT:: ratio
+The frequency ratio between subsequent versions. The default maps each octave to a different version.
+
+ARGUMENT:: valueFunc
+A function which accepts a link::Classes/Color:: object representing one pixel. This function should return a floating point value between 0.0 and 1.0. You can convert the color into the value any way you like. The default uses a standard luminance formula.
+
+ARGUMENT:: filter
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+
 
 
 METHOD:: filters
@@ -51,6 +155,8 @@ You may add to this collection. Follow the models in the class source.
 
 INSTANCEMETHODS::
 
+subsection:: Input
+
 METHOD:: read
 Read from the previously-set file path.
 
@@ -65,11 +171,83 @@ A number of seconds to wait between processing each wavetable-position.
 returns:: The WavetablePrep instance is returned. Upon completion, the wavetable versions will be available in link::#-tables::.
 
 
+METHOD:: readFromProcessedFile
+
+Creates a new WavetablePrep instance and populates it from an expanded wavetable file which WavetablePrep had previously written. This allows you to open a GUI, for instance, without reprocessing from the original wavetable. (It should be faster to read an already-processed wavetable matrix than to re-process it.)
+
+This method assumes that the wavetable matrix properties link::#-wtSize::, link::#-numMaps:: and link::#-ratio:: have already been set within the instance.
+
+ARGUMENT:: path
+A full path to a WavetablePrep output file.
+
+ARGUMENT:: startFrame
+The starting position in the file. In normal usage, you would read from the beginning. However, this option allows you to read arbitrary audio as if it were a wavetable matrix, from any position in an audio file.
+
+ARGUMENT:: numFrames
+The number of frames to read. Again, normal usage is to read an entire wavetable matrix file. When reading arbitrary audio, this argument can force a smaller result matrix.
+
+
+METHOD:: readStream
+
+Reads source wave tables from a link::Classes/SoundFile:: or compatible object. This is useful for calculating source wave tables in memory (using link::Classes/SoundFileStream::), and populating a WavetablePrep directly from memory without using a disk file.
+
+ARGUMENT:: file
+The link::Classes/SoundFile:: (you are responsible for opening it, link::Classes/SoundFile#-seek::-ing and closing it) or link::Classes/SoundFileStream:: object.
+
+ARGUMENT:: action
+An action function to evaluate upon completion.
+
+ARGUMENT:: pause
+The number of seconds to pause after processing one "wavetable position."
+
+
+METHOD:: readProcessedStream
+
+Reads a wavetable matrix from a link::Classes/SoundFile:: or compatible object. This is useful for calculating source wave tables in memory (using link::Classes/SoundFileStream::), and populating a WavetablePrep directly from memory without using a disk file.
+
+ARGUMENT:: file
+The link::Classes/SoundFile:: (you are responsible for opening it and link::Classes/SoundFile#-seek::-ing) or link::Classes/SoundFileStream:: object.
+
+ARGUMENT:: numFrames
+The number of frames to read. Again, normal usage is to read an entire wavetable matrix file.
+
+
+METHOD:: fromImage
+
+Populates this WavetablePrep instance with data from an link::Classes/Image:: object.
+
+This method assumes that the wavetable matrix properties link::#-wtSize::, link::#-numMaps:: and link::#-ratio:: have already been set within the instance.
+
+NOTE:: This method will resize the input Image object, in place. If you need the original Image to be unaffected, make sure to copy it first. ::
+
+ARGUMENT:: image
+An Image object.
+
+ARGUMENT:: numPos
+The number of "wavetable positions" to create.
+
+ARGUMENT:: valueFunc
+A function which accepts a link::Classes/Color:: object representing one pixel. This function should return a floating point value between 0.0 and 1.0. You can convert the color into the value any way you like. The default uses a standard luminance formula.
+
+
+
+subsection:: Output
+
+
 METHOD:: write
 Write the processed contents into a new file, ready for link::Classes/MultiWtOsc::. It will be a floating-point WAV file (because the bandlimiting function may cause the waveform to exceed +/- 1).
 
 ARGUMENT:: outPath
 Full path to the file to be written.
+
+
+METHOD:: writeStream
+
+Write the processed wavetables to a link::Classes/SoundFile:: or compatible object. With link::Classes/SoundFileStream::, this is useful for in-memory scenarios where you might want to avoid writing a disk file.
+
+ARGUMENT:: file
+The link::Classes/SoundFile:: (you are responsible for opening and closing it) or link::Classes/SoundFileStream:: object.
+
 
 
 subsection:: Properties
@@ -103,7 +281,32 @@ A symbol, to look up a filtering function from link::#*tables::. If the symbol d
 
 
 
-subsection:: Processing
+subsection:: Other methods
+
+METHOD:: blendAt
+Return a wavetable, interpolated linearly at the intersection of a wavetable position and a frequency map.
+
+ARGUMENT:: wtPos
+The wavetable position, clipped to 0 .. (tables.size - 1.001).
+
+ARGUMENT:: freq
+The frequency to map.
+
+ARGUMENT:: sr
+The sample rate to use for frequency mapping. A higher sample rate will allow a less-filtered wavetable to be used.
+
+RETURNS:: A Signal containing the interpolated waveform.
+
+METHOD:: gui
+
+Opens a link::Classes/WavetablePrepGui:: to display interpolated waveforms.
+
+ARGUMENT:: parent
+Optional. Supply a link::Classes/Window:: or link::Classes/View:: if you wish to put the interface into an existing GUI context. This can be code::nil:: if you either a/ supply code::bounds:: (in which case the view will create its own window) or b/ you will put the WavetablePrepGui into a link::Classes/Layout:: later.
+
+ARGUMENT:: bounds
+Optional, if you are using Qt layouts. If not, a link::Classes/Rect:: should be provided.
+
 
 METHOD:: decimate
 Produces the mapped versions for an input link::Classes/Signal:: object containing one waveform.
@@ -131,6 +334,8 @@ w.tables.size  // 256 wavetable positions
 
 w.write(thisProcess.nowExecutingPath.dirname +/+ "growler-wt.wav");
 
+w.gui(nil, Rect(800, 200, 500, 400)).front;  // have a look
+
 s.boot;
 
 b = Buffer.read(s, thisProcess.nowExecutingPath.dirname +/+ "growler-wt.wav");
@@ -149,4 +354,87 @@ a = {
 )
 
 a.free;
+
+
+
+// in-memory usage
+// hacking a triangle --> sawtooth wavetable
+// store into a SoundFileStream:
+// in memory but mimicks SoundFile's interface
+(
+var wt = Signal.newClear(2048);
+
+f = SoundFileStream.new;
+
+50.do { |i|
+	var frac = 0.5 - (i / 100);  // (0.5, 0.49 .. 0.01)
+	var peakI = (2048 * frac).round.asInteger;
+	var remain = 2047 - peakI;
+	(0 .. peakI).do { |j|
+		wt[j] = (j / peakI) * 2 - 1;
+	};
+	(peakI .. 2047).do { |j|
+		wt[j] = ((j - peakI) / remain) * -2 + 1;
+	};
+	f.writeData(wt);
+};
+
+f.close;
+)
+
+// convert to MultiWtOsc format
+w = WavetablePrep(nil, wtSize: 2048, numMaps: 8, ratio: 2, filter: \tenPctSlope).readStream(f, { "done".postln }, 0);
+
+w.gui(nil, Rect(800, 200, 500, 400)).front;  // have a look
+
+// get ready for server
+f = SoundFileStream.new;
+w.writeStream(f);
+
+// verify: result size should be correct
+f.collection.size == (w.tables.size * w.numMaps * w.wtSize)
+
+(
+s.waitForBoot {
+	b = Buffer.loadCollection(s, f.collection);
+};
+)
+
+// simple oscillator
+(
+a = {
+	var sig = MultiWtOsc.ar(
+		MouseX.kr(50, 800, 1),
+		MouseY.kr(0, 48.999, 0),
+		bufnum: b
+	);
+	(sig * 0.1).dup
+}.play;
+)
+
+
+// image
+
+w = WavetablePrep.readImage(SCDoc.helpSourceDir +/+ "images/Swamp.png", numPos: 128);
+
+g = w.gui(nil, Rect(800, 200, 500, 400)).front;  // have a look
+
+w.write("~/swamp-wt.wav".standardizePath);
+
+b.free;
+b = Buffer.read(s, "~/swamp-wt.wav".standardizePath);
+
+(
+a = { |freq = 440, wtPos = 0|
+	(MultiWtOsc.ar(freq, wtPos, bufnum: b) * 0.1).dup
+}.play;
+
+g.action = { // note: can't use 'view' argument
+	a.set(\freq, g.freq, \wtPos, g.wtPos)
+};
+)
+
+a.free
+
+
 ::
