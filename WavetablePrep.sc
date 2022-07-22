@@ -53,7 +53,7 @@ WavetablePrep {
 	}
 
 	*read { |path, wtSize = 2048, numMaps = 8, ratio = 2, filter,
-		action, pause = 0.01|
+		action, pause = 0|
 		^this.new(path, wtSize, numMaps, ratio, filter)
 		.read(action, pause)
 	}
@@ -75,7 +75,7 @@ WavetablePrep {
 		.readFromProcessedFile(path, startFrame, numFrames)
 	}
 
-	read { |action, pause = 0.01|
+	read { |action, pause = 0|
 		var file = SoundFile.openRead(path);
 		if(file.isNil) {
 			action.value(Error("File open failed"))
@@ -84,7 +84,7 @@ WavetablePrep {
 		};
 	}
 
-	readStream { |file, action, pause = 0.01|
+	readStream { |file, action, pause = 0|
 		var block;
 		{
 			tables = Array.new(file.numFrames div: wtSize);
@@ -133,8 +133,9 @@ WavetablePrep {
 		var baseFreq = sr / wtSize;
 		// log_base_ratio
 		var map = (log(freq / baseFreq) / log(ratio)).clip(0, numMaps - 1.001);
-		var lowpos = blend(tables[wtPos.floor][map.floor], tables[wtPos.ceil][map.floor], wtPos.frac);
-		var hipos = blend(tables[wtPos.floor][map.ceil], tables[wtPos.ceil][map.ceil], wtPos.frac);
+		var pos = wtPos.clip(0, tables.size - 1.001);
+		var lowpos = blend(tables[pos.floor][map.floor], tables[pos.ceil][map.floor], wtPos.frac);
+		var hipos = blend(tables[pos.floor][map.ceil], tables[pos.ceil][map.ceil], wtPos.frac);
 		^blend(lowpos, hipos, map.frac)
 	}
 
@@ -279,9 +280,11 @@ WavetablePrepGui : SCViewHolder {
 
 		posSlider.action = { |view|
 			this.wtPos = view.value;
+			this.doAction;
 		};
 		freqSlider.action = { |view|
 			this.freq = view.value;
+			this.doAction;
 		};
 
 		// slightly ugly but SCViewHolder doesn't maintain a user close hook
