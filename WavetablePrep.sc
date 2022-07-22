@@ -52,6 +52,18 @@ WavetablePrep {
 		^super.newCopyArgs(path, wtSize, numMaps, ratio, 0.5, filter)
 	}
 
+	*read { |path, wtSize = 2048, numMaps = 8, ratio = 2, filter,
+		action, pause = 0.01|
+		^this.new(path, wtSize, numMaps, ratio, filter)
+		.read(action, pause)
+	}
+
+	*readFromProcessedFile { |path, wtSize = 2048, numMaps = 8, ratio = 2,
+		startFrame = 0, numFrames = -1|
+		^this.new("", wtSize, numMaps, ratio)
+		.readFromProcessedFile(path, startFrame, numFrames)
+	}
+
 	read { |action, pause = 0.01|
 		{
 			var file = SoundFile.openRead(path);
@@ -88,6 +100,41 @@ WavetablePrep {
 		});
 	}
 
+	blendAt { |wtPos = 0, freq = 1, sr = 44100|
+		var baseFreq = sr / wtSize;
+		// log_base_ratio
+		var map = (log(freq / baseFreq) / log(ratio)).clip(0, numMaps - 1.001);
+		var lowpos = blend(tables[wtPos.floor][map.floor], tables[wtPos.ceil][map.floor], wtPos.frac);
+		var hipos = blend(tables[wtPos.floor][map.ceil], tables[wtPos.ceil][map.ceil], wtPos.frac);
+		^blend(lowpos, hipos, map.frac)
+	}
+
+	readFromProcessedFile { |path, startFrame = 0, numFrames = -1|
+		var file = SoundFile.openRead(path);
+		var chunk;
+		if(file.notNil) {
+			if(numFrames < 0) {
+				numFrames = file.numFrames;
+			};
+			tables = Array.new;
+			protect {
+				while {
+					numFrames >= wtSize and: {
+						chunk = Signal.newClear(wtSize);
+						file.readData(chunk);
+						chunk.size == wtSize
+					}
+				} {
+					tables = tables.add(chunk);
+					numFrames = numFrames - wtSize;
+				};
+			} { file.close };
+			tables = tables.clump(numMaps);
+		} {
+			Error("Could not open '%' for reading".format(path.basename)).throw;
+		}
+	}
+
 	write { |outPath|
 		var file = SoundFile.openWrite(outPath,
 			"WAV", "float", 1, 44100
@@ -102,6 +149,81 @@ WavetablePrep {
 				}
 			}
 		} { file.close };
+	}
+
+	gui { |parent, bounds|
+		^WavetablePrepGui(this, parent, bounds)
+	}
+}
+
+WavetablePrepGui : SCViewHolder {
+	var <>model;
+	var <wtPos = 0, <freq = 440, <sr = 44100;
+	var <posSlider, <freqSlider, <graph;
+
+	*new { |model, parent, bounds|
+		^super.new.init(model, parent, bounds)
+	}
+
+	init { |argModel, parent, bounds|
+		model = argModel;
+		this.view = View(parent, bounds);
+		view.layout = VLayout(
+			HLayout(
+				StaticText()
+				.align_(\center).fixedWidth_(50).string_("wtPos"),
+				posSlider = LayoutValueSlider(
+					initValue: 0,
+					spec: [0, model.tables.size - 1.001]
+				)
+			),
+			HLayout(
+				StaticText()
+				.align_(\center).fixedWidth_(50).string_("freq"),
+				freqSlider = LayoutValueSlider(
+					initValue: 440,
+					spec: [20, 20000, \exp]
+				)
+			),
+			graph = MultiSliderView()
+			.elasticMode_(true).drawRects_(false).drawLines_(true)
+		);
+
+		posSlider.action = { |view|
+			this.wtPos = view.value;
+		};
+		freqSlider.action = { |view|
+			this.freq = view.value;
+		};
+
+		// slightly ugly but SCViewHolder doesn't maintain a user close hook
+		view.onClose = view.onClose.addFunc {
+			this.changed(\didClose);
+		};
+
+		this.refresh;
+	}
+
+	wtPos_ { |argPos|
+		wtPos = argPos;
+		posSlider.value = wtPos;
+		this.refresh;
+		this.changed(\wtPos, wtPos);
+	}
+	freq_ { |argFreq|
+		freq = argFreq;
+		freqSlider.value = freq;
+		this.changed(\freq, freq);
+		this.refresh;
+	}
+	sr_ { |argSr|
+		sr = argSr;
+		this.changed(\sr, sr);
+		this.refresh;
+	}
+
+	refresh {
+		graph.value = model.blendAt(wtPos, freq, sr) * 0.5 + 0.5
 	}
 }
 
@@ -145,7 +267,9 @@ MultiWtOsc {
 		var mapXfade = mapIndex.fold(0, 1);
 
 		var rowSize = wtSize * numTables;
-		var lagPos = Lag.kr(wtPos, 0.15);
+		// I'm not sure about this actually --
+		// it doesn't prevent clicks when modulating rapidly
+		var lagPos = Lag.perform(wtPos.methodSelectorForRate, wtPos, 0.1);
 		var evenWt = lagPos.round(2) * rowSize;
 		var oddWt = ((lagPos + 1).round(2) - 1) * rowSize;
 		var wtXfade = lagPos.fold(0, 1) * 2 - 1;
