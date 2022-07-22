@@ -8,7 +8,7 @@ WavetablePrep {
 	var <>numMaps = 8;
 	var <>ratio = 2;
 	var <>fudgeFactor = 0.5;
-	var <>filter = \brickwall;
+	var <>filter = \tenPctSlope;
 	// 2d array of Signals
 	// outer dimension is wt-position entries
 	// inner dimension is mipmaps
@@ -76,28 +76,31 @@ WavetablePrep {
 	}
 
 	read { |action, pause = 0.01|
+		var file = SoundFile.openRead(path);
+		if(file.isNil) {
+			action.value(Error("File open failed"))
+		} {
+			this.readStream(file, action, pause);
+		};
+	}
+
+	readStream { |file, action, pause = 0.01|
+		var block;
 		{
-			var file = SoundFile.openRead(path);
-			var block;
-			if(file.isNil) {
-				action.value(Error("File open failed"))
-			} {
-				tables = Array.new(file.numFrames div: wtSize);
-				protect {
-					while {
-						block = Signal.newClear(wtSize);
-						file.readData(block);
-						block.size == wtSize
-					} {
-						tables = tables.add(this.decimate(block));
-						if(pause > 0) { pause.wait };
-					};
-				} { |exception|
-					file.close;
-					action.value(exception, this);
+			tables = Array.new(file.numFrames div: wtSize);
+			protect {
+				while {
+					block = Signal.newClear(wtSize);
+					file.readData(block);
+					block.size == wtSize
+				} {
+					tables = tables.add(this.decimate(block));
+					if(pause > 0) { pause.wait };
 				};
+			} { |exception|
+				file.close;
+				action.value(exception, this);
 			};
-			// action.value(nil, this);
 		}.fork(AppClock);
 	}
 
@@ -118,7 +121,7 @@ WavetablePrep {
 
 	decimate { |timeDomainTable, cos(Signal.fftCosTable(wtSize))|
 		var fft = timeDomainTable.fft(Signal.newClear(wtSize), cos);
-		var func = filters[filter] ?? { filters[\brickwall] };
+		var func = filters[filter] ?? { filters[\tenPctSlope] };
 		^Array.fill(numMaps, { |i|
 			var topBin = timeDomainTable.size * 0.5 / (ratio ** (i + fudgeFactor));
 			var new = func.(fft, topBin);
@@ -137,28 +140,33 @@ WavetablePrep {
 
 	readFromProcessedFile { |path, startFrame = 0, numFrames = -1|
 		var file = SoundFile.openRead(path);
-		var chunk;
 		if(file.notNil) {
-			if(numFrames < 0) {
-				numFrames = file.numFrames;
-			};
-			tables = Array.new;
-			protect {
-				while {
-					numFrames >= wtSize and: {
-						chunk = Signal.newClear(wtSize);
-						file.readData(chunk);
-						chunk.size == wtSize
-					}
-				} {
-					tables = tables.add(chunk);
-					numFrames = numFrames - wtSize;
-				};
-			} { file.close };
-			tables = tables.clump(numMaps);
+			file.seek(startFrame, 0);
+			this.readProcessedStream(file, numFrames);
 		} {
 			Error("Could not open '%' for reading".format(path.basename)).throw;
 		}
+	}
+
+	readProcessedStream { |file, numFrames = -1|
+		var chunk;
+		if(numFrames < 0) {
+			numFrames = file.numFrames;
+		};
+		tables = Array.new;
+		protect {
+			while {
+				numFrames >= wtSize and: {
+					chunk = Signal.newClear(wtSize);
+					file.readData(chunk);
+					chunk.size == wtSize
+				}
+			} {
+				tables = tables.add(chunk);
+				numFrames = numFrames - wtSize;
+			};
+		} { file.close };
+		tables = tables.clump(numMaps);
 	}
 
 	write { |outPath|
@@ -169,16 +177,70 @@ WavetablePrep {
 			Error("Could not open file '%' for writing".format(outPath.basename)).throw;
 		};
 		protect {
-			tables.do { |row|  // row = one wtpos
-				row.do { |wt|
-					file.writeData(wt)
-				}
-			}
+			this.writeStream(file)
 		} { file.close };
+	}
+
+	writeStream { |file|
+		tables.do { |row|  // row = one wtpos
+			row.do { |wt|
+				file.writeData(wt)
+			}
+		}
 	}
 
 	gui { |parent, bounds|
 		^WavetablePrepGui(this, parent, bounds)
+	}
+}
+
+SoundFileStream : CollStream {
+	var <>headerFormat = "WAV", <>sampleFormat = "float";
+	var <>numChannels = 1, <>sampleRate = 44100;
+
+	*new { |collection|
+		^super.newCopyArgs(collection.as(Signal))  // this handles 'nil' too!
+	}
+
+	numFrames {
+		^collection.size div: numChannels
+	}
+	duration {
+		^collection.size div: numChannels / sampleRate
+	}
+
+	close { this.pos = 0 }
+	seek { |frames, origin = 0|
+		switch(origin)
+		{ 0 } {
+			pos = frames * numChannels
+		}
+		{ 1 } {
+			pos = pos + (frames * numChannels)
+		}
+		{ 2 } {
+			pos = collection.size + (frames * numChannels)
+		};
+		pos = pos.clip(0, collection.size);
+	}
+
+	readData { |floatArray|
+		var i = 0, item;
+		while {
+			i < floatArray.size and: {
+				item = this.next;
+				item.notNil
+			}
+		} {
+			floatArray[i] = item;
+			i = i + 1;
+		};
+		if(i < floatArray.size) {
+			floatArray.extend(i)
+		};
+	}
+	writeData { |floatArray|
+		collection = collection.addAll(floatArray);
 	}
 }
 
