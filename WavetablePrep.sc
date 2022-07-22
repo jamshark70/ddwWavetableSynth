@@ -58,6 +58,17 @@ WavetablePrep {
 		.read(action, pause)
 	}
 
+	*readImage { |path, wtSize = 2048, numPos = 128, numMaps = 8, ratio = 2, valueFunc, filter|
+		var image = Image.open(path);
+		^this.fromImage(image, wtSize, numPos, numMaps, ratio, valueFunc, filter)
+	}
+
+	// note: in-place operation on the image object
+	*fromImage { |image, wtSize = 2048, numPos = 128, numMaps = 8, ratio = 2, valueFunc, filter|
+		^this.new(nil, wtSize, numMaps, ratio, filter)
+		.fromImage(image, numPos, valueFunc);
+	}
+
 	*readFromProcessedFile { |path, wtSize = 2048, numMaps = 8, ratio = 2,
 		startFrame = 0, numFrames = -1|
 		^this.new("", wtSize, numMaps, ratio)
@@ -88,6 +99,21 @@ WavetablePrep {
 			};
 			// action.value(nil, this);
 		}.fork(AppClock);
+	}
+
+	fromImage { |image, numPos = 128, valueFunc({ |color| color.luminance })|
+		var pix;
+		var cos = Signal.fftCosTable(wtSize);
+		if(image.width != wtSize or: { image.height != numPos }) {
+			image.scalesWhenResized_(true)
+			.setSize(wtSize, numPos)
+		};
+		pix = image.pixels;
+		tables = Array.fill(numPos, { |i|
+			var row = pix[i * wtSize .. (i+1) * wtSize - 1]
+			.collect { |pix| valueFunc.(Image.pixelToColor(pix)) * 2 - 1 };
+			this.decimate(row.as(Signal), cos)
+		});
 	}
 
 	decimate { |timeDomainTable, cos(Signal.fftCosTable(wtSize))|
@@ -293,5 +319,11 @@ MultiWtOsc {
 		);
 
 		^LinXFade2.ar(evenSig, oddSig, mapXfade * 2 - 1).unbubble
+	}
+}
+
++ Color {
+	luminance {
+		^(0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
 	}
 }
