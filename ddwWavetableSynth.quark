@@ -4,7 +4,8 @@
 	summary:		"Wavetable oscillator capable of using Serum/Vital-style wavetable files.",
 	author:		"James Harkins",
 	version:		1.0,
-//	helpdoc:		"",
+	schelp:		"Classes/WavetablePrep",
+	helpdoc:	"https://github.com/jamshark70/ddwWavetableSynth/blob/main/README.md",
 	dependencies:   ["ddwGUIEnhancements"],
 	url:			"http://www.dewdrop-world.net/sc3"
 )
