@@ -125,7 +125,7 @@ WavetablePrep {
 		^Array.fill(numMaps, { |i|
 			var topBin = timeDomainTable.size * 0.5 / (ratio ** (i + fudgeFactor));
 			var new = func.(fft, topBin);
-			new.real.ifft(new.imag, cos).real
+			new.real.ifft(new.imag, cos).real.normalize
 		});
 	}
 
@@ -133,10 +133,12 @@ WavetablePrep {
 		var baseFreq = sr / wtSize;
 		// log_base_ratio
 		var map = (log(freq / baseFreq) / log(ratio)).clip(0, numMaps - 1.001);
+		var map1 = floor(map + 1);
 		var pos = wtPos.clip(0, tables.size - 1.001);
-		var lowpos = blend(tables[pos.floor][map.floor], tables[pos.ceil][map.floor], wtPos.frac);
-		var hipos = blend(tables[pos.floor][map.ceil], tables[pos.ceil][map.ceil], wtPos.frac);
-		^blend(lowpos, hipos, map.frac)
+		var pos1 = floor(pos + 1);
+		var lowmap = blend(tables[pos.floor][map.floor], tables[pos1][map.floor], pos.frac);
+		var himap = blend(tables[pos.floor][map1], tables[pos1][map1], pos.frac);
+		^blend(lowmap, himap, map.frac)
 	}
 
 	readFromProcessedFile { |path, startFrame = 0, numFrames = -1|
