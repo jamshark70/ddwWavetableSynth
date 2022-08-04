@@ -12,8 +12,15 @@ This pseudo-UGen does not use SC wavetable oscillators, and the buffer data shou
 
 NOTE:: At playback time, indexing resolution may be lost if the resulting size exceeds 24 bits of precision = 16777216 sample frames. A 2048-sample wavetable, with 256 positions and 8 frequency maps, comes to 4194304 samples, well within range. Most original wavetable files are likely to be fine. Exceptionally large ones may need to be reduced. ::
 
-SUBSECTION:: Relationship between offset and squeeze/stretch point
+SUBSECTION:: Phase processing
 
+As is normal for wavetable oscillators, MultiWtOsc begins with a linear ramp for the phase: link::Classes/Phasor:: ramps between 0.0 and 1.0.
+
+code::hardSync:: is applied as a trigger input to Phasor: the phase will reset to 0 every time code::hardSync:: crosses from non-positive to positive. (If code::hardSync == 0::, then there are no such transitions and the Phasor will run normally, disabling sync.)
+
+Then code::phaseMod:: is added to this. Note: When phase-modulating a SinOsc, the SinOsc expects phase in radians, 0.0 to 2pi. With this range, the spectral effect is the same between frequency modulation and phase modulation, for any modulation index: code::SinOsc.ar(0, Phasor.ar(0, freq * SampleDur.ir, 0, 2pi) + (phaseMod * modIndex)):: should sound the same as code::SinOsc.ar(freq * (1 + (phaseMod * modIndex)))::. Because MultiWtOsc's internal phase is 0.0 to 1.0, the effect of the modulator will be 2pi times stronger than in SinOsc. MultiWtOsc does not scale the modulator in any way, so, for a compatible interpretation of the modulation index, you should scale the modulator down by 2pi: code::phaseMod * index * (1/2pi):: (written this way to avoid a division operator).
+
+The code::squeeze:: parameter applies phase distortion to this. code::squeeze > 0:: means that the part of the wavetable at code::wtOffset:: will be squeezed (and, halfway away from this will be stretched). code::squeeze < 0:: means the opposite. (Note that code::wtOffset:: is simply added after phase distortion -- so, it can be used for phase modulation also! There should be a difference in sound between modulating phase before phase distortion, vs after.)
 
 
 CLASSMETHODS::
@@ -56,6 +63,9 @@ Interpolation method, passed internally to BufRd. 1 means no interpolation, 2 is
 
 ARGUMENT:: hardSync
 Optional. An audio-rate signal serving as a hard sync source. The default, 0, disables sync. See examples below.
+
+ARGUMENT:: phaseMod
+Optional. An audio-rate signal to modulate the phase prior to phase distortion. To handle modulation index, you should multiply the modulator by code::modIndex * 2pi.reciprocal:: yourself.
 
 
 METHOD:: arOscs
