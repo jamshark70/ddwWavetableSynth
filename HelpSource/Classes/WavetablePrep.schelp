@@ -35,7 +35,7 @@ ARGUMENT:: ratio
 The frequency ratio between subsequent versions. The default maps each octave to a different version.
 
 ARGUMENT:: filter
-A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\tenPctSlope:: will be used.
 
 
 METHOD:: read
@@ -55,7 +55,7 @@ ARGUMENT:: ratio
 The frequency ratio between subsequent versions. The default maps each octave to a different version.
 
 ARGUMENT:: filter
-A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\tenPctSlope:: will be used.
 
 ARGUMENT:: action
 A function to evaluate upon completion. The arguments to this function will be: code::exception:: (an Exception or Error, or code::nil:: upon success), and the WavetablePrep instance itself.
@@ -110,7 +110,7 @@ ARGUMENT:: valueFunc
 A function which accepts a link::Classes/Color:: object representing one pixel. This function should return a floating point value between 0.0 and 1.0. You can convert the color into the value any way you like. The default uses a standard luminance formula.
 
 ARGUMENT:: filter
-A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\tenPctSlope:: will be used.
 
 
 METHOD:: fromImage
@@ -138,7 +138,7 @@ ARGUMENT:: valueFunc
 A function which accepts a link::Classes/Color:: object representing one pixel. This function should return a floating point value between 0.0 and 1.0. You can convert the color into the value any way you like. The default uses a standard luminance formula.
 
 ARGUMENT:: filter
-A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\brickwall:: will be used.
+A symbol, to look up a filtering function from link::#*tables::. If omitted, code::\tenPctSlope:: will be used.
 
 
 
@@ -277,7 +277,7 @@ After a successful link::#-read::, this is a two-dimensional array. code::tables
 
 
 METHOD:: filter
-A symbol, to look up a filtering function from link::#*tables::. If the symbol does not locate a function, code::\brickwall:: will be used.
+A symbol, to look up a filtering function from link::#*tables::. If the symbol does not locate a function, code::\tenPctSlope:: will be used.
 
 
 
