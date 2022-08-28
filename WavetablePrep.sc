@@ -355,16 +355,28 @@ MultiWtOsc {
 			}
 		}.value;
 
-		var evenMap = mapIndex.round(2) * wtSize;
-		var oddMap = ((mapIndex + 1).round(2) - 1) * wtSize;
+		// current SC releases don't have 'ramp' in K2A
+		// so apply a workaround in that case
+		var zeroOrderHold = { |ugen|
+			if(ugen.rate == \control) {
+				if(Meta_K2A.findMethod(\ar).argNames.includes('ramp')) {
+					K2A.ar(ugen, 0)
+				} {
+					Duty.ar(SampleRate.ir, 0, ugen)
+				}
+			} {
+				ugen
+			}
+		};
+
+		var evenMap = zeroOrderHold.(mapIndex.round(2) * wtSize);
+		var oddMap = zeroOrderHold.(((mapIndex + 1).round(2) - 1) * wtSize);
 		var mapXfade = mapIndex.fold(0, 1);
 
 		var rowSize = wtSize * numTables;
-		// I'm not sure about this actually --
-		// it doesn't prevent clicks when modulating rapidly
 		var lagPos = Lag.perform(wtPos.methodSelectorForRate, wtPos, 0.1);
-		var evenWt = lagPos.round(2) * rowSize;
-		var oddWt = ((lagPos + 1).round(2) - 1) * rowSize;
+		var evenWt = zeroOrderHold.(lagPos.round(2) * rowSize);
+		var oddWt = zeroOrderHold.(((lagPos + 1).round(2) - 1) * rowSize);
 		// var wtXfade = lagPos.fold(0, 1) * 2 - 1;
 		var wtXfade = SinOsc.perform(lagPos.methodSelectorForRate,
 			0,
