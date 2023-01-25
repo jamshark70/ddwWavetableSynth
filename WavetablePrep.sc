@@ -362,7 +362,7 @@ MultiWtOsc {
 				if(Meta_K2A.findMethod(\ar).argNames.includes('ramp')) {
 					K2A.ar(ugen, 0)
 				} {
-					Duty.ar(SampleRate.ir, 0, ugen)
+					Duty.ar(SampleDur.ir, 0, ugen)
 				}
 			} {
 				ugen
