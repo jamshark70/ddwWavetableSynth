@@ -377,18 +377,18 @@ MultiWtOsc {
 		var lagPos = Lag.perform(wtPos.methodSelectorForRate, wtPos, 0.1);
 		var evenWt = zeroOrderHold.(lagPos.round(2) * rowSize);
 		var oddWt = zeroOrderHold.(((lagPos + 1).round(2) - 1) * rowSize);
-		// var wtXfade = lagPos.fold(0, 1) * 2 - 1;
-		var wtXfade = SinOsc.perform(lagPos.methodSelectorForRate,
-			0,
-			// this should be -cos(lagPos * pi)
-			// but SinOsc lookup table may be faster than 'cos' operator
-			lagPos.fold(0, 1) * pi - 0.5pi
-		);
+		var wtXfade = lagPos.fold(0, 1) * 2 - 1;
+		// var wtXfade = SinOsc.perform(lagPos.methodSelectorForRate,
+		// 	0,
+		// 	// this should be -cos(lagPos * pi)
+		// 	// but SinOsc lookup table may be faster than 'cos' operator
+		// 	lagPos.fold(0, 1) * pi - 0.5pi
+		// );
 
 		var normphase = Phasor.ar(hardSync, SampleDur.ir * (freq * detunes), 0, 1);
 		// credit: Paul Miller of TXModular
 		var phaseDist = (((normphase + phaseMod % 1.0) * 2 - 1) ** (2 ** squeeze)) * 0.5 + 0.5;
-		var phase = (phaseDist + wtOffset) % 1.0 * wtSize;
+		var phase = (phaseDist + zeroOrderHold.(wtOffset)) % 1.0 * wtSize;
 
 		var evenPhase = phase + evenMap;  // eliminate a duplicate '+'
 		var evenSig = LinXFade2.ar(
