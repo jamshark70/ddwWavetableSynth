@@ -130,15 +130,20 @@ WavetablePrep {
 	}
 
 	blendAt { |wtPos = 0, freq = 1, sr = 44100|
-		var baseFreq = sr / wtSize;
+		var pos, pos1, lowmap, himap;
 		// log_base_ratio
+		var baseFreq = sr / wtSize;
 		var map = (log(freq / baseFreq) / log(ratio)).clip(0, numMaps - 1.001);
 		var map1 = floor(map + 1);
-		var pos = wtPos.clip(0, tables.size - 1.001);
-		var pos1 = floor(pos + 1);
-		var lowmap = blend(tables[pos.floor][map.floor], tables[pos1][map.floor], pos.frac);
-		var himap = blend(tables[pos.floor][map1], tables[pos1][map1], pos.frac);
-		^blend(lowmap, himap, map.frac)
+		if(tables.size == 1) {
+			^blend(tables[0][map.floor], tables[0][map1], map.frac)
+		} {
+			pos = wtPos.clip(0, tables.size - 1.001);
+			pos1 = floor(pos + 1);
+			lowmap = blend(tables[pos.floor][map.floor], tables[pos1][map.floor], pos.frac);
+			himap = blend(tables[pos.floor][map1], tables[pos1][map1], pos.frac);
+			^blend(lowmap, himap, map.frac)
+		}
 	}
 
 	readFromProcessedFile { |path, startFrame = 0, numFrames = -1|
@@ -335,8 +340,31 @@ MultiWtOsc {
 	*arOscs { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
 		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
 		numOscs = 1, detune = 1, interpolation = 2, hardSync = 0, phaseMod = 0|
+		^this.makeOscArray(
+			freq * Array.fill(numOscs, { detune ** Rand(-1, 1) }),
+			wtPos, squeeze, wtOffset,
+			bufnum, wtSize, numTables, ratio,
+			numOscs, interpolation, hardSync, phaseMod
+		)
+	}
 
-		var detunes = Array.fill(numOscs, { detune ** Rand(-1, 1) });
+	// this isn't right though -- the window should follow sync source frequency
+	// *arOscsSoftSync { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
+	// 	bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
+	// 	numOscs = 1, detune = 1, interpolation = 2, hardSync = 0, phaseMod = 0|
+	// 	var detunes = Array.fill(numOscs, { detune ** Rand(-1, 1) });
+	// 	var freqs = freq * detunes;
+	// 	^this.makeOscArray(
+	// 		freqs, wtPos, squeeze, wtOffset,
+	// 		bufnum, wtSize, numTables, ratio,
+	// 		numOscs, interpolation, hardSync, phaseMod
+	// 	) * LFTri.ar(freqs)
+	// }
+
+	// you should pass in the exact frequencies that you want (including detune)
+	*makeOscArray { |freq = 440, wtPos = 0, squeeze = 0, wtOffset = 0,
+		bufnum = 0, wtSize = 2048, numTables = 8, ratio = 2,
+		numOscs = 1, interpolation = 2, hardSync = 0, phaseMod = 0|
 
 		var log = log(ratio);
 		var baseFreq = SampleRate.ir / wtSize;
@@ -374,7 +402,11 @@ MultiWtOsc {
 		var mapXfade = mapIndex.fold(0, 1);
 
 		var rowSize = wtSize * numTables;
-		var lagPos = Lag.perform(wtPos.methodSelectorForRate, wtPos, 0.1);
+		var lagPos = if(#[audio, control].includes(wtPos.rate)) {
+			Lag.perform(wtPos.methodSelectorForRate, wtPos, 0.1)
+		} {
+			wtPos
+		};
 		var evenWt = zeroOrderHold.(lagPos.round(2) * rowSize);
 		var oddWt = zeroOrderHold.(((lagPos + 1).round(2) - 1) * rowSize);
 		var wtXfade = lagPos.fold(0, 1) * 2 - 1;
@@ -385,7 +417,7 @@ MultiWtOsc {
 		// 	lagPos.fold(0, 1) * pi - 0.5pi
 		// );
 
-		var normphase = Phasor.ar(hardSync, SampleDur.ir * (freq * detunes), 0, 1);
+		var normphase = Phasor.ar(hardSync, SampleDur.ir * freq, 0, 1);
 		// credit: Paul Miller of TXModular
 		var phaseDist = (((normphase + phaseMod % 1.0) * 2 - 1) ** (2 ** squeeze)) * 0.5 + 0.5;
 		var phase = (phaseDist + zeroOrderHold.(wtOffset)) % 1.0 * wtSize;
