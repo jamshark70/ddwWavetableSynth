@@ -32,12 +32,16 @@ WavetablePrep {
 				// total line should slide over -1 / (topBin * 0.1)
 				// = -10 / topBin
 				topBin = topBin.asInteger;
-				step = -10.0 / topBin;
+				step = max(-1, -10.0 / topBin);  // x < -1 is wrong, will amplify partials
 				((topBin * 0.9).asInteger .. topBin).do { |bin, j|
 					var mul = 1.0 + (step * j);
-					j = j + half;
+					j = (j - half + topBin);  // centered around topBin
 					r[j] = r[j] * mul;
 					i[j] = i[j] * mul;
+					if(j > 0) {
+						r[r.size - j] = r[r.size - j] * mul;
+						i[r.size - j] = i[r.size - j] * mul;
+					};
 				};
 				topBin = topBin + half + 1;
 				r[topBin .. r.size - topBin] = 0.0;
